@@ -24,7 +24,8 @@
 Game::Game(MainWindow& wnd)
 	:
 	wnd(wnd),
-	gfx(wnd)
+	gfx(wnd),
+	board(10.0f, 15.0f, 25)
 {
 }
 
@@ -44,10 +45,13 @@ void Game::Go()
 
 void Game::UpdateModel()
 {
+	if (wnd.mouse.LeftIsPressed()) {
+		board.reveal(wnd.mouse.GetPosX(), wnd.mouse.GetPosY());
+	}
 }
 
 
 void Game::ComposeFrame()
 {
-
+	board.draw(gfx);
 }

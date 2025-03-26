@@ -24,6 +24,7 @@
 #include "Mouse.h"
 #include "Graphics.h"
 #include "Vec2D.h"
+#include "Board.h"
 
 class Game
 {
@@ -41,6 +42,7 @@ private:
 private:
 	MainWindow& wnd;
 	Graphics gfx;
+	Board board;
 	/********************************/
 	/*  User Variables              */
 	/********************************/
