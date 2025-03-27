@@ -45,8 +45,16 @@ void Game::Go()
 
 void Game::UpdateModel()
 {
-	if (wnd.mouse.LeftIsPressed()) {
-		board.reveal(wnd.mouse.GetPosX(), wnd.mouse.GetPosY());
+	if (!wnd.mouse.IsEmpty()) {
+		const Mouse::Event e = wnd.mouse.Read();
+		switch (e.GetType()) {
+		case Mouse::Event::Type::LPress:
+			board.reveal(e.GetPosX(), e.GetPosY());
+			break;
+		case Mouse::Event::Type::RPress:
+			board.flag(e.GetPosX(), e.GetPosY());
+			break;
+		}
 	}
 }
 

@@ -11,13 +11,11 @@ Board::Board(const float width, const float height, const int mines) :
 	nTiles = int(width * height);
 	minesAmount = mines;
 	maxTileIndex = nTiles - 1;
-	generateMines();
-	setAllMinesCount();
 }
 
 void Board::draw(Graphics& gfx) const
 {
-	gfx.DrawRect(screenTopLeftCorner.x, screenTopLeftCorner.y, int(tilesDimensions.x * SpriteCodex::tileSize), int(tilesDimensions.y * SpriteCodex::tileSize), { 192, 192, 192 });
+	gfx.DrawRect((int)screenTopLeftCorner.x, (int)screenTopLeftCorner.y, int(tilesDimensions.x * SpriteCodex::tileSize), int(tilesDimensions.y * SpriteCodex::tileSize), { 192, 192, 192 });
 	for (int j = 0; j < tilesDimensions.y; j++) {
 		for (int i = 0; i < tilesDimensions.x; i++) {
 			tiles[j * (int)tilesDimensions.x + i].draw(i * SpriteCodex::tileSize + screenTopLeftCorner.x, j * SpriteCodex::tileSize + screenTopLeftCorner.y, gfx);
@@ -25,14 +23,14 @@ void Board::draw(Graphics& gfx) const
 	}
 }
 
-void Board::generateMines()
+void Board::generateMines(const int x, const int y)
 {
 	int minesToPut = minesAmount;
 	int mineIndex = -1;
 	while (minesToPut > 0) {
 		do {
 			mineIndex = MyUtilities::randomBetween(0, nTiles);
-		} while (tiles[mineIndex].isMined());
+		} while (tiles[mineIndex].isMined() || tiles[mineIndex].getStatus() == Tile::Status::REVEALED || isAdjacent(getLinealCoord(x,y), mineIndex));
 		tiles[mineIndex].mine();
 		minesToPut -= 1;
 	}
@@ -72,7 +70,6 @@ void Board::setMineCount(const Vec2D& coords)
 			}
 		}
 		tiles[linealCoord].setNeighborMinesAmount(minesCounter);
-		//tiles[linealCoord].reveal();
 	}
 	else {
 		tiles[linealCoord].setNeighborMinesAmount(-1);
@@ -84,10 +81,23 @@ void Board::reveal(const int x, const int y)
 	const int translatedX = int((x - screenTopLeftCorner.x) / SpriteCodex::tileSize);
 	const int translatedY = int((y - screenTopLeftCorner.y) / SpriteCodex::tileSize);
 	const int linealCoord = getLinealCoord(translatedX, translatedY);
-	if (validateTileCoords(Vec2D(float(translatedX), float(translatedY)))) {
+	if (validateTileCoords(Vec2D(float(translatedX), float(translatedY))) && tiles[getLinealCoord(translatedX, translatedY)].getStatus() != Tile::Status::FLAGGED) {
+		if (firstReveal) {
+			generateMines(translatedX, translatedY);
+			setAllMinesCount();
+			firstReveal = false;
+		}
 		tiles[getLinealCoord(translatedX, translatedY)].reveal();
 	}
 
+}
+
+void Board::flag(const int x, const int y)
+{
+	const int translatedX = int((x - screenTopLeftCorner.x) / SpriteCodex::tileSize);
+	const int translatedY = int((y - screenTopLeftCorner.y) / SpriteCodex::tileSize);
+	const int linearCoord = getLinealCoord(x, y);
+	tiles[getLinealCoord(translatedX, translatedY)].flag();
 }
 
 bool Board::validateTileCoords(const Vec2D& coords) const
@@ -98,6 +108,27 @@ bool Board::validateTileCoords(const Vec2D& coords) const
 int Board::getLinealCoord(const int x, const int y) const
 {
 	return int(tilesDimensions.x * y + x);
+}
+
+bool Board::isAdjacent(const int targetIndex, const int testedIndex) const
+{
+	Vec2D targetCoord = { float(targetIndex % (int)tilesDimensions.x), targetIndex / tilesDimensions.x };
+	Vec2D testedCoord = { float(testedIndex % (int)tilesDimensions.x), testedIndex / tilesDimensions.x };
+
+	const int y = int(targetCoord.y);
+	const int x = int(targetCoord.x);
+
+	const int testedX = int(testedCoord.x);
+	const int testedY = int(testedCoord.y);
+
+	bool isAdjacent = true;
+
+	for (int j = y - 1; j < y + 2; j++) {
+		for (int i = x - 1; i < x + 2; i++) {
+			isAdjacent = isAdjacent && !(i == testedX && j == testedY);
+		}
+	}
+	return !isAdjacent;
 }
 
 //Tile
@@ -158,13 +189,21 @@ void Board::Tile::draw(const float x, const float y, Graphics& gfx) const
 		}
 		break;
 	}
-
+	case Status::FLAGGED:
+		SpriteCodex::DrawTileButton({ x,y }, gfx);
+		SpriteCodex::DrawTileFlag({ x,y }, gfx);
+		break;
 	}
 }
 
 void Board::Tile::reveal()
 {
 	status = Status::REVEALED;
+}
+
+void Board::Tile::flag()
+{
+	status = (status != Status::REVEALED) ? (status == Status::FLAGGED) ? Status::HIDDEN : Status::FLAGGED : status;
 }
 
 void Board::Tile::setNeighborMinesAmount(const int amount)
